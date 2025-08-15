@@ -1,8 +1,7 @@
 library(dplyr)
 library(readr)
-
 # Load the original dataset
-data <- read_csv("C:\\Users\\HP\\Documents\\R_PROGRAM(DATA SCIENCE BEGINERS)\\domestic_violence_against_woen\\VAW RGAs_microdata (1).csv", show_col_types = FALSE)
+data <- read_csv("C:\\Users\\1040G7\\Documents\\INTERNSHIP\\NITDA\\Data_science_begineers\\DS_beginners_project\\data\\VAW RGAs_microdata (1).csv", show_col_types = FALSE)
 
 # =============================================================================
 # Column Mapping (Original → New names)
@@ -17,7 +16,6 @@ data <- read_csv("C:\\Users\\HP\\Documents\\R_PROGRAM(DATA SCIENCE BEGINERS)\\do
 # Disability          → disability_status      : Respondent has a disability (Yes/No)
 # Earn_Spouse         → spouse_income_relation : Whether spouse earns more, less, or same as respondent
 # Locality            → locality_type          : Urban or rural location
-# mental_stress       → mental_health_change   : Respondent’s self-reported change in mental health
 # C21                 → feels_unsafe_home      : Feels unsafe at home (Yes/No)
 # C19                 → conflict_frequency     : Frequency of conflicts at home
 # rA12                → food_insecurity_score  : Total food insecurity score
@@ -37,7 +35,7 @@ data <- read_csv("C:\\Users\\HP\\Documents\\R_PROGRAM(DATA SCIENCE BEGINERS)\\do
 # C16                 → will_seek_help_harass  : Would seek help if facing sexual harassment
 # C17                 → help_source_harass     : Source of help for harassment
 # C23_1:C23_11        → unsafe_reasons_*       : Specific reasons for feeling unsafe at home
-# FIES_1:FIES_8       → food_insec_q1:food_insec_q8 : FAO Food Insecurity Experience Scale items
+# cA12                → food_insec_: FAO Food Insecurity Experience Scale items
 # =============================================================================
 
 # Select and rename columns
@@ -48,16 +46,15 @@ cleaned_data <- data %>%
     marital_status         = BR_rA01,
     education_level        = BR_rA02,
     earns_income           = Earning_Income,
-    employment_status      = rA04_1,
+    employment_status      = BR_rA03,
     disability_status      = Disability,
-    spouse_income_relation = Earn_Spouse,
-    locality_type          = Locality,
-    mental_health_change   = mental_stress,
+    spouse_income_relation = rA04_1,
+    locality_type          = rS11,
     feels_unsafe_home      = C21,
     conflict_frequency     = C19,
     food_insecurity_score  = rA12,
-    feels_safe_day         = C02,
-    feels_safe_night       = C03,
+    feels_unsafe_day         = C02,
+    feels_unsafe_night       = C03,
     combined_safety_index  = BR_rrC02_03,
     dv_common_perception   = C10,
     vaw_problem_perception = C07,
@@ -82,22 +79,27 @@ cleaned_data <- data %>%
     unsafe_reason_9        = C23_9,
     unsafe_reason_10       = C23_10,
     unsafe_reason_11       = C23_11,
-    food_insec_q1          = FIES_1,
-    food_insec_q2          = FIES_2,
-    food_insec_q3          = FIES_3,
-    food_insec_q4          = FIES_4,
-    food_insec_q5          = FIES_5,
-    food_insec_q6          = FIES_6,
-    food_insec_q7          = FIES_7,
-    food_insec_q8          = FIES_8
+    food_insec             = cA12,
   ) %>%
+   # Confirming demographic column missing values 
+  { print(colSums(is.na(.[c("age_group", "marital_status", "education_level",
+                            "disability_status", "employment_status", "locality_type",
+                            "spouse_income_relation")])) / nrow(.) * 100); . } %>%
   # Remove extra spaces from text
   mutate(across(where(is.character), ~trimws(.))) %>%
+  # Remove rows with any NA in key demographic columns
+  filter(
+  !is.na(marital_status),
+  !is.na(education_level),
+  !is.na(employment_status)
+  ) %>%
   # Convert empty strings to NA
   mutate(across(where(is.character), ~na_if(., ""))) %>%
   # Drop rows missing BOTH DV status and mental health info
-  filter(!(is.na(dv_any_lifetime) & is.na(mental_health_change)))
+  filter(!(is.na(dv_any_lifetime)))
 
+ 
+  
 # Save cleaned file
 write_csv(cleaned_data, "Cleaned Domestic Violence Dataset.csv")
 
