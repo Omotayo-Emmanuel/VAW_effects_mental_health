@@ -55,75 +55,95 @@ binary_columns <- c(
 
 
 # Apply the conversion function to each binary column
-  norm_df <- df %>%
+norm_df <- df %>%
+  
+  # Convert all Yes/No style binary variables to numeric (1/0), NA for others
   mutate(across(all_of(binary_columns), convert_yes_no)) %>%
+  
+  # Start a new mutate block for creating derived and normalized variables
   mutate(
+    # Calculate the maximum DV type count across all respondents
+    # This will be used to normalize DV_Type_Count later
     max_dv_count = max(rowSums(across(c(
       dv_any_lifetime, dv_physical, dv_verbal,
       dv_economic, dv_sexual, dv_other
     )), na.rm = TRUE), na.rm = TRUE),
-          Food_Insecurity_Index = food_insec / 8, # Normalized the food_insec_count by dividing by 8
-
-          # Number perception of dv_common_perception
-          DV_common_perception_score = case_when(
-            dv_common_perception == "Very uncommon" ~ 0,
-            dv_common_perception == "Uncommon" ~ 1,
-            dv_common_perception == "Common" ~ 2,
-            dv_common_perception == "Very common" ~ 3,
-            dv_common_perception %in% c("Don't know", "Refused") ~ NA_real_,
-            TRUE ~ NA_real_
-          ),
-          DV_Common_Perception_norm = DV_common_perception_score / 3,  # normalize 0–1
-
-          # Numeric perception of VAW problem
-          VAW_Perception_Score = case_when(
-            vaw_problem_perception == "Not at all" ~ 0,
-            vaw_problem_perception == "A little bit" ~ 1,
-            vaw_problem_perception == "Somewhat" ~ 2,
-            vaw_problem_perception == "A lot" ~ 3,
-            vaw_problem_perception %in% c("Don't know", "Refused") ~ NA_real_,
-            TRUE ~ NA_real_
-          ),
-          VAW_Perception_norm = VAW_Perception_Score / 3,  # normalize 0–1
-
-          # Creating dervied metrics For analysis
-          DV_Exposure = ifelse(
-            dv_any_lifetime == 1 |
-            dv_physical == 1 |
-            dv_verbal == 1 |
-            dv_economic == 1 |
-            dv_sexual == 1 |
-            dv_other == 1,
-            1, 0
-          ),
-
-          DV_Type_Count = rowSums(across(c(
-            dv_any_lifetime, dv_physical, dv_verbal,
-            dv_economic, dv_sexual, dv_other
-          )), na.rm = TRUE),
-          
-           Unsafe_Score = rowMeans(across(c(
-            feels_unsafe_day, feels_unsafe_night,
-            unsafe_reason_8, unsafe_reason_11,
-            unsafe_reason_9, unsafe_reason_7,
-            unsafe_reason_6, unsafe_reason_4
-            , unsafe_reason_3, DV_Common_Perception_norm, VAW_Perception_norm
-          )), na.rm = TRUE),
-
-          ) %>%
+    
+    # Normalize food insecurity score (assumes max possible = 8)
+    Food_Insecurity_Index = food_insec / 8,
+    
+    # Assign numeric scores to perception of DV commonness
+    DV_common_perception_score = case_when(
+      dv_common_perception == "Very uncommon" ~ 0,
+      dv_common_perception == "Uncommon"      ~ 1,
+      dv_common_perception == "Common"        ~ 2,
+      dv_common_perception == "Very common"   ~ 3,
+      dv_common_perception %in% c("Don't know", "Refused") ~ NA_real_,
+      TRUE ~ NA_real_
+    ),
+    
+    # Normalize DV common perception score to range 0–1
+    DV_Common_Perception_norm = DV_common_perception_score / 3,
+    
+    # Assign numeric scores to perception of VAW as a problem
+    VAW_Perception_Score = case_when(
+      vaw_problem_perception == "Not at all"   ~ 0,
+      vaw_problem_perception == "A little bit" ~ 1,
+      vaw_problem_perception == "Somewhat"     ~ 2,
+      vaw_problem_perception == "A lot"        ~ 3,
+      vaw_problem_perception %in% c("Don't know", "Refused") ~ NA_real_,
+      TRUE ~ NA_real_
+    ),
+    
+    # Normalize VAW problem perception score to range 0–1
+    VAW_Perception_norm = VAW_Perception_Score / 3,
+    
+    # Create a binary DV exposure flag: 1 if experienced any type of DV, else 0
+    DV_Exposure = ifelse(
+      dv_any_lifetime == 1 |
+      dv_physical == 1 |
+      dv_verbal == 1 |
+      dv_economic == 1 |
+      dv_sexual == 1 |
+      dv_other == 1,
+      1, 0
+    ),
+    
+    # Count total number of DV types experienced per respondent
+    DV_Type_Count = rowSums(across(c(
+      dv_any_lifetime, dv_physical, dv_verbal,
+      dv_economic, dv_sexual, dv_other
+    )), na.rm = TRUE),
+    
+    # Calculate unsafe score as the average of selected unsafe indicators
+    # Includes perception scores and safety reasons
+    Unsafe_Score = rowMeans(across(c(
+      feels_unsafe_day, feels_unsafe_night,
+      unsafe_reason_8, unsafe_reason_11,
+      unsafe_reason_9, unsafe_reason_7,
+      unsafe_reason_6, unsafe_reason_4,
+      unsafe_reason_3, DV_Common_Perception_norm, 
+      VAW_Perception_norm
+    )), na.rm = TRUE)
+  ) %>%
+  
+  # Switch to row-wise operation for per-respondent calculations
   rowwise() %>%
+  
+  # Compute composite well-being score
   mutate(
-   WellBeing_Score = rowMeans(
+    WellBeing_Score = rowMeans(
       cbind(
-        1 - Unsafe_Score,
-        1 - (DV_Type_Count / max_dv_count),
-        1 - Food_Insecurity_Index
+        1 - Unsafe_Score,                      # Invert unsafe score (high unsafe → low well-being)
+        1 - (DV_Type_Count / max_dv_count),    # Normalize & invert DV type count
+        1 - Food_Insecurity_Index              # Invert food insecurity
       ),
       na.rm = TRUE
-    ) * ifelse(disability_status == 1, 0.9, 1)
+    ) * ifelse(disability_status == 1, 0.9, 1) # Reduce score by 10% if disabled
   )
-# View the normalized DataFrame
-   View(norm_df)
+
+# Open the normalized DataFrame in a spreadsheet-like viewer
+View(norm_df)
 
 
 
