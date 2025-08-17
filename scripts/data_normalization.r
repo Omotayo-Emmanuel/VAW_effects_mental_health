@@ -100,14 +100,19 @@ norm_df <- df %>%
     
     # Create a binary DV exposure flag: 1 if experienced any type of DV, else 0
     DV_Exposure = ifelse(
-      dv_any_lifetime == 1 |
-      dv_physical == 1 |
-      dv_verbal == 1 |
-      dv_economic == 1 |
-      dv_sexual == 1 |
-      dv_other == 1,
-      1, 0
-    ),
+      rowSums(
+        cbind(
+          dv_any_lifetime,
+          dv_physical,
+          dv_verbal,
+          dv_economic,
+          dv_sexual,
+          dv_other
+        ),
+      na.rm = TRUE   # treat NAs as zeros in the sum
+    ) > 0,
+    1, 0
+  ),
     
     # Count total number of DV types experienced per respondent
     DV_Type_Count = rowSums(across(c(

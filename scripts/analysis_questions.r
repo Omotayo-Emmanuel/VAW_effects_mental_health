@@ -6,6 +6,9 @@ install.packages("effsize")
 library(effsize)
 install.packages("effectsize")
 library(effectsize)
+install.packages("lavaan")
+library(lavaan)
+
 # Load the cleaned dataset
 df <- read.csv("C:\\Users\\1040G7\\Documents\\INTERNSHIP\\NITDA\\Data_science_begineers\\DS_beginners_project\\data_processed\\Normalized_DV_ Dataset.csv")
 
@@ -130,6 +133,7 @@ cat(sprintf(
   unname(g_effect$estimate)
 ))
 
+# Question 3
 #Does the type of domestic violence (physical, verbal, denial of needs, 
 # denial of communication, sexual harassment) differentially impact feelings of safety 
 # and well-being scores?
@@ -143,7 +147,7 @@ print(cor_test)
 # DV_Type = independent variable
 # Unsafe_Score and WellBeing_Score = dependent variables
 
-# Had to create a vriable column for DV_Type
+# Had to create a variable column for DV_Type
 # reshape to long
 df_long <- df %>%
   pivot_longer(
@@ -182,3 +186,46 @@ print(pairwise_wellbeing)
 # To get the sense of how much variance in Unsafe and WellBeing is explained by DV_Type, we can calculate the effect size using eta-squared
 eta_squared(aov(Unsafe_Score ~ DV_Type, data = df_long), partial = TRUE)
 eta_squared(aov(WellBeing_Score ~ DV_Type, data = df_long), partial = TRUE)
+
+# Question 4
+#Do frequent conflicts at home (C19) mediate the relationship between domestic violence exposure 
+#and safety perceptions (C02, C03, C21)?
+
+# Data Exploration of the conflict column
+unique(df$conflict_frequency)
+# Result 
+# [1] NA              "Never"         "Daily"         "Refused"      
+# [5] "Once or twice" "Monthly"       "Weekly"        "Don't know"   
+
+# Lets Prep the Data
+# Convert conflict_frequency to a factor with ordered levels and drop DK/Refused as NA
+View(df)
+unique(df$DV_Exposure)
+df_med <- df %>%
+  mutate(
+    conflict_frequency = case_when(
+      conflict_frequency %in% c("Don't know", "Refused") ~ NA_character_, # Convert DK/Refused to NA
+      TRUE ~ as.character(conflict_frequency) # Keep other values as is
+    ),
+
+    # Convert to ordered factor with meaningful levels
+    # R will otherwise treat the values as plain text and sort them alphabetically 
+    # (e.g., “Daily, Monthly, Never, Once or twice, Weekly”), which is not the real frequency order. 
+    # Setting the levels explicitly locks in the correct order for summaries, plots, and modeling.
+
+    conflict_frequency = factor(
+      conflict_frequency,
+      levels = c("Never", "Once or twice", "Monthly", "Weekly", "Daily"),
+      ordered = TRUE
+  ),
+
+  # Outcomes as ordered (0=No, 1=Yes)
+    feels_unsafe_home  = factor(feels_unsafe_home,  levels = c(0, 1),
+                                labels = c("No", "Yes"), ordered = TRUE),
+    feels_unsafe_day   = factor(feels_unsafe_day,   levels = c(0, 1),
+                                labels = c("No", "Yes"), ordered = TRUE),
+    feels_unsafe_night = factor(feels_unsafe_night, levels = c(0, 1),
+                                labels = c("No", "Yes"), ordered = TRUE)
+  )
+
+View(df_med)
