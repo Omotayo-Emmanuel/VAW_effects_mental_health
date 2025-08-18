@@ -1,5 +1,6 @@
 # Load Libraries
 library(dplyr)
+library(tidyr)
 library(tidyverse)
 chooseCRANmirror()
 install.packages("effsize")
@@ -8,6 +9,11 @@ install.packages("effectsize")
 library(effectsize)
 install.packages("lavaan")
 library(lavaan)
+install.packages("mediation")
+install.packages("colorspace")
+install.packages("data.table")
+install.packages("Rcpp")
+library(mediation)
 
 # Load the cleaned dataset
 df <- read.csv("C:\\Users\\1040G7\\Documents\\INTERNSHIP\\NITDA\\Data_science_begineers\\DS_beginners_project\\data_processed\\Normalized_DV_ Dataset.csv")
@@ -196,7 +202,8 @@ unique(df$conflict_frequency)
 # Result 
 # [1] NA              "Never"         "Daily"         "Refused"      
 # [5] "Once or twice" "Monthly"       "Weekly"        "Don't know"   
-
+ls(df_med)
+ls(df)
 # Lets Prep the Data
 # Convert conflict_frequency to a factor with ordered levels and drop DK/Refused as NA
 View(df)
@@ -217,15 +224,49 @@ df_med <- df %>%
       conflict_frequency,
       levels = c("Never", "Once or twice", "Monthly", "Weekly", "Daily"),
       ordered = TRUE
-  ),
-
-  # Outcomes as ordered (0=No, 1=Yes)
-    feels_unsafe_home  = factor(feels_unsafe_home,  levels = c(0, 1),
-                                labels = c("No", "Yes"), ordered = TRUE),
-    feels_unsafe_day   = factor(feels_unsafe_day,   levels = c(0, 1),
-                                labels = c("No", "Yes"), ordered = TRUE),
-    feels_unsafe_night = factor(feels_unsafe_night, levels = c(0, 1),
-                                labels = c("No", "Yes"), ordered = TRUE)
+  )
+) 
+# Create a single analysis dataset and drop rows with any NA we care about
+df_clean <- df_med %>%
+  dplyr::select(
+    DV_Exposure,
+    conflict_frequency, # The mediator variable
+    Unsafe_Score,
+    age_group, education_level, marital_status
+  ) %>%
+  tidyr::drop_na() %>%
+  mutate(
+    age_group       = as.factor(age_group),
+    education_level = as.factor(education_level),
+    marital_status  = as.factor(marital_status),
+     # numeric mediator column for mediate()
+    conflict_frequency_num = as.numeric(conflict_frequency)
   )
 
-View(df_med)
+
+ # Using the Mediation package to test mediation
+ # Model how DV_Exposure affects conflict_frequency
+ med_model <- lm(conflict_frequency_num ~ DV_Exposure + age_group + education_level+  marital_status, data = df_clean)
+
+# Outcome model
+# Model how DV exposure and conflict frequency predict safety perception
+out_model <- lm(Unsafe_Score ~DV_Exposure + conflict_frequency_num + age_group + education_level + marital_status, data = df_clean)
+
+# Mediation analysis
+set.seed(123)
+med_out <- mediate(
+  model.m = med_model,   # mediator model
+  model.y = out_model,   # outcome model
+  treat   = "DV_Exposure", 
+  mediator= "conflict_frequency_num",
+  boot    = TRUE,        # bootstrap for robust inference
+  sims    = 2000
+)
+
+summary(med_out)
+
+#What the numbers told us:
+#	 Yes, there is a mediation effect — about 13% of the impact of DV exposure on feeling unsafe is explained by more frequent conflicts at home.
+#	 The other 87% is a direct effect of DV exposure on feeling unsafe, unrelated to the conflict measure.
+#	 Both the indirect path (DV → Conflicts → Safety) and the direct path (DV → Safety) were statistically significant.
+

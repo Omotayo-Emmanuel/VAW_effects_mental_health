@@ -25,14 +25,16 @@ convert_yes_no <- function(column) {
     ifelse(grepl("Yes", column, ignore.case = TRUE), 1,
            ifelse(grepl("No", column, ignore.case = TRUE), 0, NA))
 }
-
+# Confirming the unique values in the columns
+unique(df$dv_any_lifetime)
+unique(df$feels_unsafe_home)
+unique(df$feels_unsafe_day)
+unique(df$feels_unsafe_night)
 binary_columns <- c(
     "dv_any_lifetime",          # Has experienced or knows someone who has experienced DV in lifetime
     "earns_income",             # Respondent earns own income (Yes/No)  
     "disability_status",        # Respondent has a disability (Yes/No)  
     "feels_unsafe_home",        # Feels unsafe at home (Yes/No)
-    "feels_unsafe_day",           # Feels safe walking alone during the day
-    "feels_unsafe_night",         # Feels safe walking alone at night
     "will_seek_help_dv",        # Would seek help if facing DV
     "will_seek_help_harass",    # Would seek help if facing sexual harassment
     "dv_physical",              # Experienced/knows someone who experienced physical abuse
@@ -59,6 +61,24 @@ norm_df <- df %>%
   
   # Convert all Yes/No style binary variables to numeric (1/0), NA for others
   mutate(across(all_of(binary_columns), convert_yes_no)) %>%
+
+  # Recode ordered safety categories to 0–1 (0 = Very safe, 1 = Not safe at all)
+  mutate(
+    # Set DK/Refused to NA
+    # This replaces Don’t know and Refused with NA so they won’t be counted in scores.
+    feels_unsafe_day   = ifelse(feels_unsafe_day   %in% c("Don't know", "Refused"), NA, feels_unsafe_day),
+    feels_unsafe_night = ifelse(feels_unsafe_night %in% c("Don't know", "Refused"), NA, feels_unsafe_night),
+    # Order the factor
+    # tweused the order  of lowest risk ("Very safe") and which is highest risk ("Not safe at all")
+    feels_unsafe_day   = factor(feels_unsafe_day,   levels = c("Very safe", "Safe", "Not very safe", "Not safe at all"), ordered = TRUE),
+    feels_unsafe_night = factor(feels_unsafe_night, levels = c("Very safe", "Safe", "Not very safe", "Not safe at all"), ordered = TRUE),
+    # Convert to numeric 0..1
+    # This rescales the ordered factors to a 0–1 range, where 0 is "Very safe" and 1 is "Not safe at all"
+    # Since 3 is the highest possible number in that new scale, dividing by 3 turns it into:
+    feels_unsafe_day   = (as.numeric(feels_unsafe_day)   - 1) / 3,
+    feels_unsafe_night = (as.numeric(feels_unsafe_night) - 1) / 3
+  ) %>%
+  
   
   # Start a new mutate block for creating derived and normalized variables
   mutate(
