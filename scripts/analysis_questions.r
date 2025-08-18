@@ -14,6 +14,11 @@ install.packages("colorspace")
 install.packages("data.table")
 install.packages("Rcpp")
 library(mediation)
+library(broom)       # to get tidy(), glance(), augment() results
+install.packages("jtools")
+library(jtools)      # optional, nice summaries with interpretation
+install.packages("rstatix")
+library(rstatix)     # For normality + tests
 
 # Load the cleaned dataset
 df <- read.csv("C:\\Users\\1040G7\\Documents\\INTERNSHIP\\NITDA\\Data_science_begineers\\DS_beginners_project\\data_processed\\Normalized_DV_ Dataset.csv")
@@ -263,6 +268,9 @@ med_out <- mediate(
   sims    = 2000
 )
 
+nobs(med_model)
+nobs(out_model)
+
 summary(med_out)
 
 #What the numbers told us:
@@ -270,3 +278,157 @@ summary(med_out)
 #	 The other 87% is a direct effect of DV exposure on feeling unsafe, unrelated to the conflict measure.
 #	 Both the indirect path (DV → Conflicts → Safety) and the direct path (DV → Safety) were statistically significant.
 
+# Question 5
+# Does seeking formal or informal help (C13, C17) moderate the effect of domestic violence 
+# on women’s safety perceptions and mobility (C24)?
+
+# Data Exploration on the required columns
+unique(df$mobility_frequency)
+unique(df$will_seek_help_dv)
+unique(df$help_source_harass)
+unique(df$help_source_dv)
+unique(df$will_seek_help_harass)
+
+# DATA PREP
+# Classify the help sorce from dv into formal and informal
+# Formal help sources: police, health facility, helpline, women’s centres, shelters, NGOs/CSOs.
+# Informal help sources: family, friends, community leaders, religious leaders.
+
+df_mod <- df %>%
+  mutate(
+    # Convert help source to factor with meaningful levels
+    help_type_dv = case_when(
+      help_source_dv %in% c("Call/go to police", "Go to health facility", "Call helpline",
+                            "Access to women's centres", "Seek help from shelter or safehouse for women",
+                            "Seeking support from women's groups/NGOs/CSOs") ~ "Formal",
+      help_source_dv %in% c("Seek support from family", "Talk with friends for support or guidance",
+                            "Seek support from a religious leader", "Approach community leaders for support") ~ "Informal",
+      TRUE ~ "Other/NA"
+    ),
+      mobility_num = case_when(
+        mobility_frequency == "Never" ~ 0,
+        mobility_frequency == "Once or twice a month" ~ 1,
+        mobility_frequency == "Once a week"  ~ 2,
+        mobility_frequency == "2-3 times per week" ~ 3,
+        mobility_frequency == "Daily" ~ 4,
+        TRUE ~ NA_real_
+    )
+  )
+
+# Check the distribution of help types
+table(df_mod$help_type_dv, useNA = "ifany")
+# Testing whether the help type interacts with DV_Exposure in predicting saftey perceptions and mobility
+# Since we have two outcomes we'll run two separate models
+# Logistic regression -> Domestic violence × Help type on safety perceptions.
+# Linear regression -> Domestic violence × Help type on mobility frequency.
+
+# Logistic regression: Does help type moderate DV effect on safety?
+# Fit a logistic regression to test moderation (interaction) 
+df_mod$unsafe_binary <- as.integer(df_mod$Unsafe_Score > 0)
+model_safety <- glm(
+  unsafe_binary ~ DV_Exposure * help_type_dv,
+  data = df_mod,
+  family = binomial(link = "logit")
+)
+
+# Show coefficients, standard errors, z-tests, p-values, and model fit
+summary(model_safety)
+# Linear regression: Does help type moderate DV effect on mobility?
+model_mobility <- lm(
+  mobility_num ~ DV_Exposure * help_type_dv,
+  data = df_mod
+)
+
+summary(model_mobility)
+# 
+exp(coef(model_safety))   # Odds ratios
+confint(model_safety)     # 95% CI for odds ratios
+
+# QUESTION 6
+#  Do women exposed to domestic violence report higher levels of mental health strain indicators
+#  — such as food insecurity (rA12) and feeling unsafe walking alone during the day/night (C02, C03, BR_rrC02_03)
+#  — compared to non-survivors?
+
+# DATA Exploration
+unique(df$food_insecurity_score)
+unique(df$food_insec)
+unique(df$Food_Insecurity_Index)
+unique(df$DV_Exposure)
+unique(df$Unsafe_Score)
+
+# DATA Preparation
+# Define groups (DV_exposed vs Not_exposed)
+df_comp <- df%>%
+  mutate(
+    DV_group = ifelse(DV_Exposure == 1, "survivors", "non-survivors")
+
+  )
+table(df_comp$DV_group)
+# Check distributions of outcomes ---
+# Food insecurity index
+# Taking a random sample of 5000 without NAs
+shapiro.test(sample(na.omit(df$Food_Insecurity_Index), 5000)) # Normality check
+
+# Safety & well-being
+shapiro.test(sample(na.omit(df$Unsafe_Score), 5000))
+shapiro.test(sample(na.omit(df$WellBeing_Score), 5000))
+
+
+# ---- Group Summaries ----
+summary_stats <- df_comp %>%
+  group_by(DV_group) %>%
+  summarise(
+    mean_food_insec = mean(Food_Insecurity_Index, na.rm = TRUE),
+    median_food_insec = median(Food_Insecurity_Index, na.rm = TRUE),
+    mean_unsafe = mean(Unsafe_Score, na.rm = TRUE),
+    median_unsafe = median(Unsafe_Score, na.rm = TRUE),
+    n = n()
+  )
+print(summary_stats)
+
+# ---- Group Comparison ----
+# If normal -> t-test
+t_food <- t.test(Food_Insecurity_Index ~ DV_group, data = df_comp)
+t_unsafe <- t.test(Unsafe_Score ~ DV_group, data = df_comp)
+
+# If not normal -> Mann-Whitney U test (Wilcoxon rank-sum)
+w_food <- wilcox.test(Food_Insecurity_Index ~ DV_group, data = df_comp)
+w_unsafe <- wilcox.test(Unsafe_Score ~ DV_group, data = df_comp)
+
+# Print results
+cat("\n--- Food Insecurity ---\n")
+print(t_food)
+print(w_food)
+
+cat("\n--- Unsafe Score ---\n")
+print(t_unsafe)
+print(w_unsafe)
+
+# QUESTION 7
+# Are women with disabilities at higher risk of experiencing domestic violence 
+# and lower well-being scores compared to those without disabilities?
+
+# Since disablity status is binary, we'll  carry on with the analysis
+# to test assosciation between disability status and DV exposure, well-being scores
+# Data Exploration
+table(df$disability_status, df$DV_Exposure, useNA = "ifany")
+
+#Cross-tabulate disability status with DV exposure
+# Cross-tabulation
+tab <- table(df$disability_status, df$DV_Exposure, useNA = "ifany")
+tab
+names(df)  # see if both are there
+nrow(df)   # should be the same for all variables
+# Chi-square test (test of independence)
+chisq_test <- chisq.test(tab)
+chisq_test
+
+# Optional: Logistic regression (for effect size / odds ratio)
+model <- glm(DV_Exposure ~ disability_status, data = df, family = binomial)
+summary(model)
+
+# Odds ratio + CI
+exp(cbind(OR = coef(model), confint(model)))
+
+# Group means
+aggregate(WellBeing_Score ~ disa, data = df, mean, na.rm = TRUE)
