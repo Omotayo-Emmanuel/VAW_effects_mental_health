@@ -271,6 +271,8 @@ med_out <- mediate(
 nobs(med_model)
 nobs(out_model)
 
+# Save the mediation output object
+save(med_out, file = "analysis_results/mediation_model.RData")
 summary(med_out)
 
 #What the numbers told us:
@@ -344,6 +346,7 @@ summary(model_mobility)
 exp(coef(model_safety))   # Odds ratios
 confint(model_safety)     # 95% CI for odds ratios
 
+save(model_safety, file = "analysis_results/model_safety.RData")
 # QUESTION 6
 #  Do women exposed to domestic violence report higher levels of mental health strain indicators
 #  — such as food insecurity (rA12) and feeling unsafe walking alone during the day/night (C02, C03, BR_rrC02_03)
@@ -431,4 +434,101 @@ summary(model)
 exp(cbind(OR = coef(model), confint(model)))
 
 # Group means
-aggregate(WellBeing_Score ~ disa, data = df, mean, na.rm = TRUE)
+aggregate(WellBeing_Score ~ disability_status, data = df, mean, na.rm = TRUE)
+# On average, the non‑disability group scores about 0.097 points higher on your WellBeing_Score scale.
+# Checking normality for  confirmation
+wilcox_test <- wilcox.test(WellBeing_Score ~ disability_status, data = df)
+wilcox_test
+
+# Save outputs for Visualization 
+
+# Q1: DV prevalence across age, marital status, education
+q1_age <- df %>%
+  group_by(age_group) %>%
+  summarise(prevalence = mean(DV_Exposure, na.rm = TRUE) * 100,
+            count = n())
+
+q1_marital <- df %>%
+  group_by(marital_status) %>%
+  summarise(prevalence = mean(DV_Exposure, na.rm = TRUE) * 100,
+            count = n())
+
+q1_edu <- df %>%
+  group_by(education_level) %>%
+  summarise(prevalence = mean(DV_Exposure, na.rm = TRUE) * 100,
+            count = n())
+
+write.csv(q1_age, "Q1_DV_by_Age.csv", row.names = FALSE)
+write.csv(q1_marital, "Q1_DV_by_Marital.csv", row.names = FALSE)
+write.csv(q1_edu, "Q1_DV_by_Education.csv", row.names = FALSE)
+
+# Q2: DV exposure vs safety (Unsafe_Score)
+df_aly_2 <- df %>%
+  dplyr::select(DV_Exposure, Unsafe_Score) %>%
+  dplyr::filter(!is.na(DV_Exposure), !is.na(Unsafe_Score)) %>%
+  mutate(DV_Exposure = factor(DV_Exposure, levels = c(0, 1), labels = c("No DV", "DV")))
+
+group_summary <- df_aly_2 %>%
+  group_by(DV_Exposure) %>%
+  summarise(mean_unsafe = mean(Unsafe_Score, na.rm = TRUE),
+            sd_safety = sd(Unsafe_Score, na.rm = TRUE),
+            count = n())
+write.csv(group_summary, "Q2_DV_vs_Safety.csv", row.names = FALSE)
+
+# Q3: DV Type vs Safety & Wellbeing
+df_long <- df %>%
+  pivot_longer(cols = c(dv_physical, dv_verbal, dv_economic, dv_other, dv_sexual),
+               names_to = "DV_Type", values_to = "Exposure") %>%
+  dplyr::filter(Exposure == 1) %>%
+  dplyr::select(-Exposure)
+
+df_long$DV_Type <- factor(df_long$DV_Type,
+                          levels = c("dv_physical","dv_verbal","dv_economic","dv_other","dv_sexual"),
+                          labels = c("Physical","Verbal","Denial_of_Needs","Denial_of_Communication","Sexual_Harassment"))
+
+write.csv(df_long, "Q3_DVType_Safety_WellBeing.csv", row.names = FALSE)
+
+# Q4: Mediation dataset (DV -> Conflicts -> Safety)
+df_clean <- df %>%
+  mutate(conflict_frequency = case_when(
+           conflict_frequency %in% c("Don't know", "Refused") ~ NA_character_,
+           TRUE ~ as.character(conflict_frequency)),
+         conflict_frequency = factor(conflict_frequency,
+           levels = c("Never","Once or twice","Monthly","Weekly","Daily"), ordered = TRUE)) %>%
+  dplyr::select(DV_Exposure, conflict_frequency, Unsafe_Score,
+         age_group, education_level, marital_status) %>%
+  tidyr::drop_na() %>%
+  mutate(conflict_frequency_num = as.numeric(conflict_frequency))
+write.csv(df_clean, "Q4_Mediation_Dataset.csv", row.names = FALSE)
+
+# Q5: Moderation (Help type × DV exposure)
+df_mod <- df %>%
+  mutate(help_type_dv = case_when(
+           help_source_dv %in% c("Call/go to police","Go to health facility","Call helpline",
+                                 "Access to women's centres","Seek help from shelter or safehouse for women",
+                                 "Seeking support from women's groups/NGOs/CSOs") ~ "Formal",
+           help_source_dv %in% c("Seek support from family","Talk with friends for support or guidance",
+                                 "Seek support from a religious leader","Approach community leaders for support") ~ "Informal",
+           TRUE ~ "Other/NA"),
+         mobility_num = case_when(
+           mobility_frequency == "Never" ~ 0,
+           mobility_frequency == "Once or twice a month" ~ 1,
+           mobility_frequency == "Once a week" ~ 2,
+           mobility_frequency == "2-3 times per week" ~ 3,
+           mobility_frequency == "Daily" ~ 4,
+           TRUE ~ NA_real_))
+write.csv(df_mod, "Q5_HelpType_Moderation.csv", row.names = FALSE)
+
+# Q6: DV survivors vs non-survivors (Food insecurity & Safety)
+df_comp <- df %>%
+  mutate(DV_group = ifelse(DV_Exposure == 1, "survivors", "non-survivors")) %>%
+  dplyr::select(DV_group, Food_Insecurity_Index, Unsafe_Score, WellBeing_Score)
+write.csv(df_comp, "Q6_DV_vs_NonDV_Outcomes.csv", row.names = FALSE)
+
+# Q7: Disability vs DV Exposure & WellBeing
+df_disab <- df %>%
+  dplyr::select(disability_status, DV_Exposure, WellBeing_Score)
+write.csv(df_disab, "Q7_Disability_DV_WellBeing.csv", row.names = FALSE)
+
+cat("All 7 datasets saved as CSV files for visualization.\n")
+
