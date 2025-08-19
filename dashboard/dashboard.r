@@ -36,7 +36,7 @@ ui <- dashboardPage(
   # Main panel body where content for each tab is displayed
   dashboardBody(
     tabItems(
-      # First tab content: Overview & Prevalence (Q1)
+            # First tab content: Overview & Prevalence (Q1)
       tabItem(tabName = "q1",
               h2("Domestic Violence Exposure Prevalence and Demographics"),
               fluidRow(
@@ -48,19 +48,23 @@ ui <- dashboardPage(
               fluidRow(
                 # Prevalence by Education Plot
                 box(plotOutput("plot1_education"), width = 6, title = "Exposure by Education", status = "primary"),
-                # Key Takeaways Box
+                # Prevalence by Marital Status Plot (NEW!)
+                box(plotOutput("plot1_marital"), width = 6, title = "Exposure by Marital Status", status = "primary")
+              ),
+              fluidRow(
+                # Key Takeaways Box - Now spans the full width below the charts
                 box(
                   h4("Key Findings (Q1):"),
                   tags$ul(
                     tags$li("57.98% of women reported exposure to or knowledge of DV."),
                     tags$li("Prevalence decreases with age: Highest in 18-29 (61.5%), lowest in 60+ (44.0%)."),
                     tags$li("Education shows a complex relationship: Lowest in 'Technical/vocational' (46.3%), highest in 'Less than primary' (70.5%)."),
+                    tags$li("Marital Status: Separated/Divorced individuals show the highest prevalence (62.3%)."),
                     tags$li("Chi-squared tests confirmed significant variation by age, marital status, and education (all p < .05).")
-                  ), width = 6, title = "Analysis Summary", background = "light-blue"
+                  ), width = 12, title = "Analysis Summary", background = "light-blue"
                 )
               )
       ),
-      
       # Second tab content: DV & Safety (Q2)
       tabItem(tabName = "q2",
               h2("Relationship between DV Exposure and Feelings of Safety"),
@@ -225,31 +229,40 @@ server <- function(input, output) {
   # Load the main dataset
   # NOTE: Replace the path with your actual file path to Normalized_DV_Dataset.csv
   df <- reactive({
-    read.csv("data/Normalized_DV_Dataset.csv") # Update this path
+    read.csv("C:\\Users\\1040G7\\Documents\\INTERNSHIP\\NITDA\\Data_science_begineers\\DS_beginners_project\\data_processed\\Normalized_DV_ Dataset.csv") # Update this path
   })
-  
+  # Load analysis results for Q1
+  q1_edu_df <- reactive({
+    read.csv("C:\\Users\\1040G7\\Documents\\INTERNSHIP\\NITDA\\Data_science_begineers\\DS_beginners_project\\analysis_results\\Q1_DV_by_Education.csv") # Update this path
+  })
+  q1_age_df <- reactive({
+    read.csv("C:\\Users\\1040G7\\Documents\\INTERNSHIP\\NITDA\\Data_science_begineers\\DS_beginners_project\\analysis_results\\Q1_DV_by_Age.csv") # Update this path
+  })
+    q1_marital_df <- reactive({
+        read.csv("C:\\Users\\1040G7\\Documents\\INTERNSHIP\\NITDA\\Data_science_begineers\\DS_beginners_project\\analysis_results\\Q1_DV_by_Marital.csv") # Update this path
+    })
   # Load analysis results for Q4
   # NOTE: Replace the path with your actual file path to Q4_Mediation_Dataset.csv
   q4_df <- reactive({
-    read.csv("analysis_results/Q4_Mediation_Dataset.csv") # Update this path
+    read.csv("C:\\Users\\1040G7\\Documents\\INTERNSHIP\\NITDA\\Data_science_begineers\\DS_beginners_project\\analysis_results\\Q3_DVType_Safety_WellBeing.csv") # Update this path
   })
   
   # Load analysis results for Q5
   # NOTE: Replace the path with your actual file path to Q5_HelpType_Moderation.csv
   q5_df <- reactive({
-    read.csv("analysis_results/Q5_HelpType_Moderation.csv") # Update this path
+    read.csv("C:\\Users\\1040G7\\Documents\\INTERNSHIP\\NITDA\\Data_science_begineers\\DS_beginners_project\\analysis_results\\Q5_HelpType_Moderation.csv") # Update this path
   })
   
   # Load analysis results for Q6
   # NOTE: Replace the path with your actual file path to Q6_DV_vs_NonDV_Outcomes.csv
   q6_df <- reactive({
-    read.csv("analysis_results/Q6_DV_vs_NonDV_Outcomes.csv") # Update this path
+    read.csv("C:\\Users\\1040G7\\Documents\\INTERNSHIP\\NITDA\\Data_science_begineers\\DS_beginners_project\\analysis_results\\Q6_DV_vs_NonDV_Outcomes.csv") # Update this path
   })
   
   # Load analysis results for Q7
   # NOTE: Replace the path with your actual file path to Q7_Disability_DV_WellBeing.csv
   q7_df <- reactive({
-    read.csv("analysis_results/Q7_Disability_DV_WellBeing.csv") # Update this path
+    read.csv("C:\\Users\\1040G7\\Documents\\INTERNSHIP\\NITDA\\Data_science_begineers\\DS_beginners_project\\analysis_results\\Q7_Disability_DV_WellBeing.csv") # Update this path
   })
   
   # Set a consistent theme for all plots
@@ -269,37 +282,46 @@ server <- function(input, output) {
       plot_theme
   })
   
-  # Q1.2: DV prevalence by age group plot
-  output$plot1_age <- renderPlot({
-    data <- df()
-    data %>%
-      group_by(age_group, DV_Exposure) %>%
-      summarise(count = n(), .groups = 'drop') %>%
-      mutate(percentage = count/sum(count)) %>%
-      filter(DV_Exposure == 1) %>%
-      ggplot(aes(x = age_group, y = percentage)) +
-      geom_col(fill = "coral") +
-      scale_y_continuous(labels = scales::percent) +
-      labs(title = "DV Exposure by Age Group",
-           x = "Age Group", y = "Percentage Exposed") +
-      plot_theme
-  })
+    # Q1.2: DV prevalence by age group plot (Using Q1_DV_by_Age.csv)
+    output$plot1_age <- renderPlot({
+    data <- q1_age_df() # Load the pre-summarised data
+    ggplot(data, aes(x = age_group, y = prevalence/100)) +
+        geom_col(fill = "coral") +
+        geom_text(aes(label = paste0(round(prevalence, 1), "%")), vjust = -0.5, size = 4) +  # Add value labels
+        scale_y_continuous(labels = scales::percent, limits = c(0, 0.65))  +
+        labs(title = "DV Exposure by Age Group",
+            x = "Age Group", y = "Percentage Exposed",
+            caption = paste("Total N =", sum(data$count))) + # Add total sample size as caption
+        plot_theme
+    })
+    
+   #Q1.3: DV prevalence by education level plot (Using Q1_DV_by_Education.csv)
+output$plot1_education <- renderPlot({
+  data <- q1_edu_df() # Load the pre-summarised data
   
-  # Q1.3: DV prevalence by education level plot
-  output$plot1_education <- renderPlot({
-    data <- df()
-    data %>%
-      group_by(education_level, DV_Exposure) %>%
-      summarise(count = n(), .groups = 'drop') %>%
-      mutate(percentage = count/sum(count)) %>%
-      filter(DV_Exposure == 1) %>%
-      ggplot(aes(x = education_level, y = percentage)) +
-      geom_col(fill = "goldenrod") +
-      scale_y_continuous(labels = scales::percent) +
-      labs(title = "DV Exposure by Education Level",
-           x = "Education Level", y = "Percentage Exposed") +
-      plot_theme
-  })
+  ggplot(data, aes(x = education_level, y = prevalence/100)) +
+    geom_col(fill = "goldenrod") +
+    geom_text(aes(label = paste0(round(prevalence, 1), "%")), vjust = -0.5, size = 4, angle = 45) + # Add value labels
+    scale_y_continuous(labels = scales::percent, limits = c(0, 0.75)) +
+    labs(title = "DV Exposure by Education Level",
+         x = "Education Level", y = "Percentage Exposed",
+         caption = paste("Total N =", sum(data$count))) + # Add total sample size as caption
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) + # Rotate x-axis labels
+    plot_theme
+})
+
+    # Q1.4: DV prevalence by marital status (Using Q1_DV_by_Marital.csv)
+output$plot1_marital <- renderPlot({
+  data <- q1_marital_df() # Load the pre-summarised data
+  ggplot(data, aes(x = marital_status, y = prevalence/100)) +
+    geom_col(fill = "purple") +
+    geom_text(aes(label = paste0(round(prevalence, 1), "%")), vjust = -0.5, size = 4) + # Add value labels
+    scale_y_continuous(labels = scales::percent, limits = c(0, 0.65)) +
+    labs(title = "DV Exposure by Marital Status",
+         x = "Marital Status", y = "Percentage Exposed",
+         caption = paste("Total N =", sum(data$count))) + # Add total sample size as caption
+    plot_theme
+})
   
   # Q2.1: Boxplot of safety scores by DV exposure
   output$plot2_boxplot <- renderPlot({
@@ -373,14 +395,10 @@ server <- function(input, output) {
   # NOTE: This requires the mediation model object (med_out) to be saved and loaded
   # For now, we'll create a placeholder or load if available
   output$plot4_mediation <- renderPlot({
-    # If you have saved the mediation model object, load it here
-    # load("path/to/mediation_model.RData") 
-    # plot(med_out)
-    
-    # Placeholder message
-    plot(0, 0, type = "n", xlab = "", ylab = "", axes = FALSE)
-    text(0, 0, "Mediation plot would appear here if model object was available", 
-         cex = 1.2)
+    # Load the mediation model object
+    load("C:\\Users\\1040G7\\Documents\\INTERNSHIP\\NITDA\\Data_science_begineers\\DS_beginners_project\\analysis_results\\mediation_model.RData")
+    plot(med_out)
+  
   })
   
   # Q5.1: Help-seeking types
@@ -401,16 +419,11 @@ server <- function(input, output) {
   # NOTE: This requires the model_safety object to be saved and loaded
   output$plot5_interaction <- renderPlot({
     # If you have saved the model object, load it here
-    # load("path/to/model_safety.RData")
-    # eff <- Effect(c("DV_Exposure", "help_type_dv"), model_safety)
-    # plot(eff, main = "Interaction Between DV Exposure and Help Type",
-    #      xlab = "DV Exposure", ylab = "Probability of Feeling Unsafe",
-    #      lines = list(col = c("blue", "red")), confint = list(style = "bars"))
-    
-    # Placeholder message
-    plot(0, 0, type = "n", xlab = "", ylab = "", axes = FALSE)
-    text(0, 0, "Interaction plot would appear here if model object was available", 
-         cex = 1.2)
+    load("C:\\Users\\1040G7\\Documents\\INTERNSHIP\\NITDA\\Data_science_begineers\\DS_beginners_project\\analysis_results\\model_safety.RData")
+    eff <- Effect(c("DV_Exposure", "help_type_dv"), model_safety)
+    plot(eff, main = "Interaction Between DV Exposure and Help Type",
+          xlab = "DV Exposure", ylab = "Probability of Feeling Unsafe",
+          lines = list(col = c("blue", "red")), confint = list(style = "bars"))
   })
   
   # Q6.1: Food Insecurity by DV Exposure

@@ -17,9 +17,16 @@ q6_df <- read.csv("C:\\Users\\1040G7\\Documents\\INTERNSHIP\\NITDA\\Data_science
 q7_df <- read.csv("C:\\Users\\1040G7\\Documents\\INTERNSHIP\\NITDA\\Data_science_begineers\\DS_beginners_project\\analysis_results\\Q7_Disability_DV_WellBeing.csv")
 # Set theme for all plots
 theme_set(theme_minimal(base_size = 12) + 
-            theme(plot.title = element_text(hjust = 0.5, face = "bold"),
-                  legend.position = "bottom"))
-
+            theme(
+              plot.background = element_rect(fill = "white", color = NA),
+              panel.background = element_rect(fill = "white", color = NA),
+              plot.title = element_text(hjust = 0.5, face = "bold", color = "black"),
+              axis.title = element_text(color = "black"),
+              axis.text = element_text(color = "black"),
+              legend.text = element_text(color = "black"),
+              legend.title = element_text(color = "black"),
+              legend.position = "bottom"
+            ))
 ### QUESTION 1: DV PREVALENCE BY DEMOGRAPHICS ###
 
 # 1.1 Overall DV exposure prevalence
