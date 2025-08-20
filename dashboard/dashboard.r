@@ -67,22 +67,23 @@ ui <- dashboardPage(
       ),
       # Second tab content: DV & Safety (Q2)
       tabItem(tabName = "q2",
-              h2("Relationship between DV Exposure and Feelings of Safety"),
+              h2("Relationship between Domestic Violence Exposure and Feelings of Safety"),
               fluidRow(
                 # Boxplot of Safety Scores by DV Exposure
-                box(plotOutput("plot2_boxplot"), width = 6, title = "Safety Scores by Exposure", status = "primary"),
+                box(plotOutput("plot2_boxplot"), width = 6, title = "Unsafety Scores by Exposure", status = "primary"),
                 # Density plot of Safety Scores
-                box(plotOutput("plot2_density"), width = 6, title = "Distribution of Safety Scores", status = "primary")
+                box(plotOutput("plot2_density"), width = 6, title = "Distribution of UnSafety Scores", status = "primary")
               ),
               fluidRow(
                 # Key Takeaways Box
                 box(
                   h4("Key Findings (Q2):"),
                   tags$ul(
-                    tags$li("A strong, significant relationship exists between DV exposure and feeling unsafe."),
-                    tags$li("Mean Unsafe_Score: DV Exposed = 0.450 vs. Not Exposed = 0.326 (diff = 0.124)."),
-                    tags$li("Welch's t-test: t(15151) = -38.49, p < .001."),
-                    tags$li("Effect size (Hedges' g) = -0.61, indicating a medium to large effect.")
+                    tags$li("A strong, significant relationship exists between Domestic Violence exposure and feeling unsafe."),
+                    tags$li("Individuals exposed to domestic violence (Mean Safety Score = 0.450) report feeling significantly less safe than those not exposed (Mean Safety Score = 0.326) (diff = 0.124)."),
+                    tags$li("Welch's t-test: confirmed highly significant difference, p < .001."),
+                    tags$li("Wilcoxon rank‑sum test : non‑parametric check, also significant (p < 0.001)"),
+                    tags$li("Effect size (Hedges' g) = -0.61, indicating a medium to large effect. , meaning the difference is meaningful in practical terms as well as statistically.")
                   ), width = 12, title = "Analysis Summary", background = "light-blue"
                 )
               )
@@ -93,7 +94,7 @@ ui <- dashboardPage(
               h2("Impact of Different Types of Domestic Violence"),
               fluidRow(
                 # Safety Scores by DV Type Plot
-                box(plotOutput("plot3_safety"), width = 6, title = "Safety by DV Type", status = "primary"),
+                box(plotOutput("plot3_safety"), width = 6, title = "Unsafety by DV Type", status = "primary"),
                 # Well-being Scores by DV Type Plot
                 box(plotOutput("plot3_wellbeing"), width = 6, title = "Well-being by DV Type", status = "primary")
               ),
@@ -102,13 +103,15 @@ ui <- dashboardPage(
                 box(
                   h4("Key Findings (Q3):"),
                   tags$ul(
+                    tags$li("Correlation check: Unsafe_Score and WellBeing_Score were moderately negatively correlated (r ≈ −0.576, p < 0.001)."),
                     tags$li("MANOVA showed significant overall effect of DV type on both safety and well-being (p < .001)."),
                     tags$li("Post-hoc tests revealed differential impacts:"),
                     tags$ul(
                       tags$li("Safety: Physical and Sexual harassment types were associated with highest unsafe scores."),
-                      tags$li("Well-being: Verbal and Denial of Needs showed strong negative impacts.")
+                      tags$li("Well-being: Verbal and physical showed strong negative impacts.")
                     ),
-                    tags$li("Effect sizes (Eta²) were small but significant (~0.008).")
+                    tags$li("Effect sizes (Eta²) were small but significant (~0.008)."),
+                    tags$li(" the type of abuse shapes how unsafe women feel and how low their well‑being is, with some forms linked to worse outcomes than others.")
                   ), width = 12, title = "Analysis Summary", background = "light-blue"
                 )
               )
@@ -129,8 +132,9 @@ ui <- dashboardPage(
                   h4("Key Findings (Q4):"),
                   tags$ul(
                     tags$li("Frequent conflicts at home partially mediate the DV exposure -> safety perception relationship."),
-                    tags$li("ACME (Indirect effect): 0.0157, p < .001"),
-                    tags$li("ADE (Direct effect): 0.1044, p < .001"),
+                    tags$li(". Exposure to domestic violence increases conflict frequency, which in turn increases feelings of unsafety"),
+                    tags$li("ACME (Indirect effect): 0.0157, p < .001 - conflict frequency adds a small but statistically significant contribution to unsafety perceptions." ),
+                    tags$li("ADE (Direct effect): 0.1044, p < .001 -  even after accounting for conflicts, DV exposure still strongly predicts higher unsafety scores."),
                     tags$li("Total effect: 0.1201, p < .001"),
                     tags$li("Proportion mediated: ~13.0%")
                   ), width = 12, title = "Analysis Summary", background = "light-blue"
@@ -157,8 +161,11 @@ ui <- dashboardPage(
                       tags$li("Safety perceptions (binary outcome)"),
                       tags$li("Mobility frequency")
                     ),
-                    tags$li("Interaction terms in both models were non-significant (p > 0.2)."),
-                    tags$li("Formal help sources were less common than informal sources.")
+                    tags$li("the interaction terms were not significant (p = 0.280 for safety; p = 0.872 for mobility)."),
+                    tags$li("Meaning Interaction terms in both models were non-significant (p > 0.2)."),
+                    tags$li("Formal help sources were less common than informal sources."),
+                    tags$li("lines are almost perfectly parallel. This means that the effect of DV Exposure on the probability
+                    of feeling unsafe is consistently strong and negative, and this effect does not change depending on the type of help sought.")
                   ), width = 12, title = "Analysis Summary", background = "light-blue"
                 )
               )
@@ -186,7 +193,8 @@ ui <- dashboardPage(
                       tags$li("Feeling Unsafe: 0.450 vs 0.326 (non-survivors), p < .001")
                     ),
                     tags$li("Effect sizes were medium to large for both measures."),
-                    tags$li("Results were consistent across parametric and non-parametric tests.")
+                    tags$li("DV exposure is strongly associated with increased food insecurity and reduced feelings of safety 
+                    both key indicators of psychological strain.")
                   ), width = 12, title = "Analysis Summary", background = "light-blue"
                 )
               )
@@ -213,8 +221,9 @@ ui <- dashboardPage(
                       tags$li("Higher DV exposure: 61.4% vs 57.1% (no disability)"),
                       tags$li("Lower well-being scores: 0.546 vs 0.643 (no disability)")
                     ),
-                    tags$li("Chi-square test: χ²(2) = 20.54, p < .001"),
-                    tags$li("Odds ratio for DV exposure: 1.20 [1.11, 1.30] for disabled women")
+                    tags$li("Statistical tests: Chi-square (p < 0.001) and logistic regression (OR = 1.20) confirm a significant association."),
+                    tags$li("Odds ratio for DV exposure: 1.20 [1.11, 1.30] for disabled women"),
+                    tags$li("Well-being: Average score for women with disabilities was 0.55, compared to 0.64 for non-disabled women (p < 0.001, Wilcoxon test).")
                   ), width = 12, title = "Analysis Summary", background = "light-blue"
                 )
               )
@@ -244,7 +253,7 @@ server <- function(input, output) {
   # Load analysis results for Q4
   # NOTE: Replace the path with your actual file path to Q4_Mediation_Dataset.csv
   q4_df <- reactive({
-    read.csv("C:\\Users\\1040G7\\Documents\\INTERNSHIP\\NITDA\\Data_science_begineers\\DS_beginners_project\\analysis_results\\Q3_DVType_Safety_WellBeing.csv") # Update this path
+    read.csv("C:\\Users\\1040G7\\Documents\\INTERNSHIP\\NITDA\\Data_science_begineers\\DS_beginners_project\\analysis_results\\Q4_Mediation_Dataset.csv") # Update this path
   })
   
   # Load analysis results for Q5
@@ -328,8 +337,8 @@ output$plot1_marital <- renderPlot({
     data <- df()
     ggplot(data, aes(x = factor(DV_Exposure), y = Unsafe_Score)) +
       geom_boxplot(fill = c("skyblue", "salmon")) +
-      labs(title = "Safety Scores by DV Exposure Status",
-           x = "DV Exposure", y = "Safety Score") +
+      labs(title = "Unsafety Scores by DV Exposure Status",
+           x = "DV Exposure", y = "Unsafety Score") +
       scale_x_discrete(labels = c("No Exposure", "Exposed")) +
       plot_theme
   })
@@ -339,8 +348,8 @@ output$plot1_marital <- renderPlot({
     data <- df()
     ggplot(data, aes(x = Unsafe_Score, fill = factor(DV_Exposure))) +
       geom_density(alpha = 0.6) +
-      labs(title = "Distribution of Safety Scores",
-           x = "Safety Score", y = "Density", fill = "DV Exposure") +
+      labs(title = "Distribution of Unsafety Scores",
+           x = "unsafety Score", y = "Density", fill = "DV Exposure") +
       scale_fill_manual(values = c("skyblue", "salmon"),
                         labels = c("No Exposure", "Exposed")) +
       plot_theme
@@ -356,8 +365,8 @@ output$plot1_marital <- renderPlot({
     
     ggplot(df_long, aes(x = DV_Type, y = Unsafe_Score)) +
       geom_boxplot(fill = "lightgreen") +
-      labs(title = "Safety Scores by Type of Domestic Violence",
-           x = "DV Type", y = "Safety Score") +
+      labs(title = "Unsafety Scores by Type of Domestic Violence",
+           x = "DV Type", y = "Unsafety Score") +
       theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
       plot_theme
   })

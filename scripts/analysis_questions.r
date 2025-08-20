@@ -17,8 +17,6 @@ library(mediation)
 library(broom)       # to get tidy(), glance(), augment() results
 install.packages("jtools")
 library(jtools)      # optional, nice summaries with interpretation
-install.packages("rstatix")
-library(rstatix)     # For normality + tests
 
 # Load the cleaned dataset
 df <- read.csv("C:\\Users\\1040G7\\Documents\\INTERNSHIP\\NITDA\\Data_science_begineers\\DS_beginners_project\\data_processed\\Normalized_DV_ Dataset.csv")
